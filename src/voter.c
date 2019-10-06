@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "../headers/voter.h"
 #include "../headers/utilities.h"
 
@@ -62,6 +63,16 @@ char Voter_Get_Gender(Voter v) {
 
 int Voter_Get_Zip(Voter v) {
     return v->zip;
+}
+
+void Voter_Print(Voter v) {
+    // Get year of birth
+    // Source:https://www.codevscolor.com/c-print-current-time-day-month-year/
+    time_t s = time(NULL);
+    struct tm *curTime = localtime(&s);
+    int year = curTime->tm_year + 1900 - v->age;
+    // Print record info
+    printf("%s %s %s %d %d",v->idCode,v->firstname,v->lastname,v->zip,year);
 }
 
 void Voter_Destroy(Voter *v) {

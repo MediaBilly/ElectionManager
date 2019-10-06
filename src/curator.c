@@ -133,6 +133,19 @@ void Curator_Run(Curator cur) {
         }
         // 3. ins record
         // 4. find key
+        else if (!strcmp(cmd,"find")) {
+            // Read key
+            param = readNextWord(stdin);
+            // Todo: Search BF first
+            Voter v;
+            if ((v = RBT_Search(cur->RBT,param)) == NULL) {
+                printf("\t# REC-WITH %s NOT-in-structs\n",param);
+            } else {
+                printf("\t# REC-IS: ");
+                Voter_Print(v);
+                printf("\n");
+            }
+        }
         // 5. delete key
         else if (!strcmp(cmd,"delete")) {
             // Read key
