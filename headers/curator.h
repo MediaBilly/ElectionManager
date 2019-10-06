@@ -5,7 +5,7 @@
 
 typedef struct curator *Curator;
 
-int Curator_Initialize(Curator*,FILE*,FILE*);
+int Curator_Initialize(Curator*,FILE*,FILE*,int);
 void Curator_Run(Curator);
 void Curator_Destroy(Curator*);
 

@@ -32,7 +32,7 @@ int main(int argc, char const *argv[])
         }
     }
     printf("%d\n",numofupdates);
-    if(Curator_Initialize(&curator,inputfile,outputfile)) {
+    if(Curator_Initialize(&curator,inputfile,outputfile,numofupdates)) {
         Curator_Run(curator);
         Curator_Destroy(&curator);
     }

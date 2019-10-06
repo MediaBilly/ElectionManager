@@ -12,6 +12,7 @@ struct curator
 {
     FILE *inputfile;
     FILE *outputfile;
+    int numofupdates;
     RedBlackTree RBT;
 };
 
@@ -38,7 +39,6 @@ char *readNextWord(FILE *input) {
                 not_enough_memory();
                 return NULL;
             }
-            printf("More buffer memory...\n");
             curBufSize += BUFFER_SIZE * sizeof(char);
         }
         buf[i++] = ch;
@@ -49,7 +49,6 @@ char *readNextWord(FILE *input) {
             not_enough_memory();
             return NULL;
         }
-        printf("More buffer memory for end of string character...\n");
         curBufSize += sizeof(char);
     }
     buf[i] = '\0';
@@ -70,14 +69,16 @@ char readGender(FILE *input) {
     return ch;
 }
 
-int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile) {
+int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofupdates) {
     // Allocate memory for the curator
     if ((*cur = (Curator)malloc(sizeof(struct curator))) == NULL) {
         not_enough_memory();
         return 0;
     }
+    // Initialize variables
     (*cur)->inputfile = inputfile;
     (*cur)->outputfile = outputfile;
+    (*cur)->numofupdates = numofupdates;
     // Initialize the RBT
     if (!RBT_Initialize(&((*cur)->RBT))) {
         not_enough_memory();
@@ -130,6 +131,46 @@ void Curator_Run(Curator cur) {
                 printf("\t# KEY %s NOT-IN-RBT\n",param);
             }
         }
+        // 3. ins record
+        // 4. find key
+        // 5. delete key
+        else if (!strcmp(cmd,"delete")) {
+            // Read key
+            param = readNextWord(stdin);
+            // Todo: Search and delete from BF first and then from postal codes
+            if (RBT_Delete(cur->RBT,param)) {
+                printf("\t# DELETED %s FROM-structs\n",param);
+            } else {
+                printf("\t# KEY %s NOT-in-structs\n",param);
+            }
+        }
+        // 6. vote key
+        else if (!strcmp(cmd,"vote")) {
+            // Read key
+            param = readNextWord(stdin);
+            // Todo: Search BF first!
+            switch (RBT_Vote(cur->RBT,param))
+            {
+                case VOTE_SUCCESS:
+                    printf("\t# REC-WITH %s SET-VOTED\n",param);
+                    break;
+                case ALREADY_VOTED:
+                    printf("\t# REC-WITH %s ALREADY-VOTED\n",param);
+                    break;
+                case VOTER_NOT_FOUND:
+                    printf("\t# KEY %s NOT-in-structs\n",param);
+                    break;
+                default:
+                    break;
+            }
+        }
+        // 7. load fileofkeys
+        // 8. voted
+        else if (!strcmp(cmd,"voted")) {
+            printf("\t# NUMBER %d\n",RBT_NumVoted(cur->RBT));
+        }
+        // 9. voted postcode
+        // 10. votedperpc
         // 11. exit
         else if (!strcmp(cmd,"exit")) {
             run = 0;

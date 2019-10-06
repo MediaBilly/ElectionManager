@@ -12,7 +12,6 @@ struct voter
     int age;
     char gender;
     int zip;
-    int hasvoted;
 };
 
 int Voter_Initialize(Voter *v,char *idCode,char *firstname,char *lastname,int age,char gender,int zip) {
@@ -38,7 +37,6 @@ int Voter_Initialize(Voter *v,char *idCode,char *firstname,char *lastname,int ag
     (*v)->age = age;
     (*v)->gender = gender;
     (*v)->zip = zip;
-    (*v)->hasvoted = 0;
     return 1;
 }
 
@@ -64,22 +62,6 @@ char Voter_Get_Gender(Voter v) {
 
 int Voter_Get_Zip(Voter v) {
     return v->zip;
-}
-
-int Voter_Has_Voted(Voter v) {
-    return v->hasvoted;
-}
-
-int Voter_Vote(Voter v) {
-    //Check if already voted
-    if (!v->hasvoted) {
-        // Not yes so vote for him and return true
-        v->hasvoted = 1;
-        return 1;
-    } else {
-        // Already voted so just return false
-        return 0;
-    }
 }
 
 void Voter_Destroy(Voter *v) {
