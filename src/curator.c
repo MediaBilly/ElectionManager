@@ -112,6 +112,24 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     return 1;
 }
 
+void Vote(Curator cur,char *idCode) {
+    // Todo: Search BF first!
+    switch (RBT_Vote(cur->RBT,idCode))
+    {
+        case VOTE_SUCCESS:
+            printf("\t# REC-WITH %s SET-VOTED\n",idCode);
+            break;
+        case ALREADY_VOTED:
+            printf("\t# REC-WITH %s ALREADY-VOTED\n",idCode);
+            break;
+        case VOTER_NOT_FOUND:
+            printf("\t# KEY %s NOT-in-structs\n",idCode);
+            break;
+        default:
+            break;
+    }
+}
+
 void Curator_Run(Curator cur) {
     int run = 1;
     char *cmd = NULL,*param = NULL;
@@ -161,35 +179,20 @@ void Curator_Run(Curator cur) {
         else if (!strcmp(cmd,"vote")) {
             // Read key
             param = readNextWord(stdin);
-            // Todo: Search BF first!
-            switch (RBT_Vote(cur->RBT,param))
-            {
-                case VOTE_SUCCESS:
-                    printf("\t# REC-WITH %s SET-VOTED\n",param);
-                    break;
-                case ALREADY_VOTED:
-                    printf("\t# REC-WITH %s ALREADY-VOTED\n",param);
-                    break;
-                case VOTER_NOT_FOUND:
-                    printf("\t# KEY %s NOT-in-structs\n",param);
-                    break;
-                default:
-                    break;
-            }
+            Vote(cur,param);
         }
         // 7. load fileofkeys
         else if (!strcmp(cmd,"load")) {
-          // Open fileofkeys
-          param = readNextWord(stdin);
-          FILE *fileofkeys = fopen(param,"r");
-          // Vote all codes contained in the fileofkeys
-          char *idCode;
-          while ((idCode = readNextWord(fileofkeys)) != NULL) {
-            RBT_Vote(cur->RBT,idCode);
-            printf("%s\n",idCode);
-            free(idCode);
-          }
-          fclose(fileofkeys);
+            // Open fileofkeys
+            param = readNextWord(stdin);
+            FILE *fileofkeys = fopen(param,"r");
+            // Vote all codes contained in the fileofkeys
+            char *idCode;
+            while ((idCode = readNextWord(fileofkeys)) != NULL) {
+                Vote(cur,idCode);
+                free(idCode);
+            }
+            fclose(fileofkeys);
         }
         // 8. voted
         else if (!strcmp(cmd,"voted")) {
