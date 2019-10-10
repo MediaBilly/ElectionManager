@@ -30,7 +30,7 @@ char *readNextWord(FILE *input) {
         return NULL;
     }
     int i = 0;
-    // Read word to dynamically allocated buffer letter by letter in order to avoid static array 
+    // Read word to dynamically allocated buffer letter by letter in order to avoid static array
     while (!feof(input) && (ch = fgetc(input)) != '\n' && ch != ' ')
     {
         // Buffer full so allocate more space
@@ -178,6 +178,19 @@ void Curator_Run(Curator cur) {
             }
         }
         // 7. load fileofkeys
+        else if (!strcmp(cmd,"load")) {
+          // Open fileofkeys
+          param = readNextWord(stdin);
+          FILE *fileofkeys = fopen(param,"r");
+          // Vote all codes contained in the fileofkeys
+          char *idCode;
+          while ((idCode = readNextWord(fileofkeys)) != NULL) {
+            RBT_Vote(cur->RBT,idCode);
+            printf("%s\n",idCode);
+            free(idCode);
+          }
+          fclose(fileofkeys);
+        }
         // 8. voted
         else if (!strcmp(cmd,"voted")) {
             printf("\t# NUMBER %d\n",RBT_NumVoted(cur->RBT));
@@ -187,7 +200,7 @@ void Curator_Run(Curator cur) {
         // 11. exit
         else if (!strcmp(cmd,"exit")) {
             run = 0;
-        } 
+        }
         // Wrong
         else {
             printf("Wrong Command\n");
