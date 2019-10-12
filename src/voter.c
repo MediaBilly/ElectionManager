@@ -7,30 +7,30 @@
 
 struct voter
 {
-    char *idCode;
-    char *firstname;
-    char *lastname;
+    string idCode;
+    string firstname;
+    string lastname;
     int age;
     char gender;
     int zip;
 };
 
-int Voter_Initialize(Voter *v,char *idCode,char *firstname,char *lastname,int age,char gender,int zip) {
+int Voter_Initialize(Voter *v,string idCode,string firstname,string lastname,int age,char gender,int zip) {
     if ((*v = (Voter)malloc(sizeof(struct voter))) == NULL) {
         not_enough_memory();
         return 0;
     }
-    if (((*v)->idCode = (char*)malloc((strlen(idCode) + 1) * sizeof(char))) == NULL) {
+    if (((*v)->idCode = (string)malloc((strlen(idCode) + 1) * sizeof(char))) == NULL) {
         not_enough_memory();
         return 0;
     }
     strcpy((*v)->idCode,idCode);
-    if (((*v)->firstname = (char*)malloc((strlen(firstname) + 1) * sizeof(char))) == NULL) {
+    if (((*v)->firstname = (string)malloc((strlen(firstname) + 1) * sizeof(char))) == NULL) {
         not_enough_memory();
         return 0;
     }
     strcpy((*v)->firstname,firstname);
-    if (((*v)->lastname = (char*)malloc((strlen(lastname) + 1) * sizeof(char))) == NULL) {
+    if (((*v)->lastname = (string)malloc((strlen(lastname) + 1) * sizeof(char))) == NULL) {
         not_enough_memory();
         return 0;
     }
@@ -41,15 +41,15 @@ int Voter_Initialize(Voter *v,char *idCode,char *firstname,char *lastname,int ag
     return 1;
 }
 
-char *Voter_Get_IdCode(Voter v) {
+string Voter_Get_IdCode(Voter v) {
     return v->idCode;
 }
 
-char *Voter_Get_FirstName(Voter v) {
+string Voter_Get_FirstName(Voter v) {
     return v->firstname;
 }
 
-char *Voter_Get_LastName(Voter v) {
+string Voter_Get_LastName(Voter v) {
     return v->lastname;
 }
 

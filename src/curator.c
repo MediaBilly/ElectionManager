@@ -5,6 +5,7 @@
 #include "../headers/utilities.h"
 #include "../headers/redblacktree.h"
 #include "../headers/voter.h"
+#include "../headers/bloomfilter.h"
 
 #define BUFFER_SIZE 15
 
@@ -14,6 +15,7 @@ struct curator
     FILE *outputfile;
     int numofupdates;
     RedBlackTree RBT;
+    BloomFilter BF;
 };
 
 char *readNextWord(FILE *input) {
@@ -25,7 +27,7 @@ char *readNextWord(FILE *input) {
     ungetc(ch,input);
     char *buf;
     int curBufSize = sizeof(char) * BUFFER_SIZE;
-    if ((buf = (char*)malloc(curBufSize)) == NULL) {
+    if ((buf = (string)malloc(curBufSize)) == NULL) {
         not_enough_memory();
         return NULL;
     }
@@ -35,7 +37,7 @@ char *readNextWord(FILE *input) {
     {
         // Buffer full so allocate more space
         if (i == curBufSize) {
-            if ((buf = (char*)realloc(buf,(BUFFER_SIZE + curBufSize) * sizeof(char))) == NULL) {
+            if ((buf = (string)realloc(buf,(BUFFER_SIZE + curBufSize) * sizeof(char))) == NULL) {
                 not_enough_memory();
                 return NULL;
             }
@@ -45,7 +47,7 @@ char *readNextWord(FILE *input) {
     }
     // Buffer full so allocate 1 more byte for end of string character to fit
     if (i == curBufSize) {
-        if ((buf = (char*)realloc(buf,(1 + curBufSize) * sizeof(char))) == NULL) {
+        if ((buf = (string)realloc(buf,(1 + curBufSize) * sizeof(char))) == NULL) {
             not_enough_memory();
             return NULL;
         }
@@ -53,7 +55,7 @@ char *readNextWord(FILE *input) {
     }
     buf[i] = '\0';
     char *word;
-    if((word = (char*)malloc((strlen(buf) + 1) * sizeof(char))) == NULL) {
+    if((word = (string)malloc((strlen(buf) + 1) * sizeof(char))) == NULL) {
         not_enough_memory();
         return NULL;
     }
@@ -69,6 +71,18 @@ char readGender(FILE *input) {
     return ch;
 }
 
+unsigned int lines(FILE *file) {
+    char ch;
+    unsigned int lines = 1;
+    // Count lines
+    while (!feof(file))
+        if ((ch = fgetc(file)) == '\n')
+            lines++;
+    // Go to the start of the file in order to read it again later
+    fseek(file,0,SEEK_SET);
+    return lines - 1;
+}
+
 int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofupdates) {
     // Allocate memory for the curator
     if ((*cur = (Curator)malloc(sizeof(struct curator))) == NULL) {
@@ -81,7 +95,10 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     (*cur)->numofupdates = numofupdates;
     // Initialize the RBT
     if (!RBT_Initialize(&((*cur)->RBT))) {
-        not_enough_memory();
+        return 0;
+    }
+    // Initialize the BF
+    if (!BF_Initialize(&((*cur)->BF),lines(inputfile))) {
         return 0;
     }
     // Read the records of all voters and insert them to the data structures
@@ -104,6 +121,8 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
         Voter_Initialize(&v,idCode,firstname,lastname,age,gender,zip);
         // Insert her/him to the RBT
         RBT_Insert((*cur)->RBT,v);
+        // Insert her/him to the BF
+        BF_Insert((*cur)->BF,idCode);
         // Free unecessary memory
         free(idCode);
         free(firstname);
@@ -112,21 +131,26 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     return 1;
 }
 
-void Vote(Curator cur,char *idCode) {
-    // Todo: Search BF first!
-    switch (RBT_Vote(cur->RBT,idCode))
-    {
-        case VOTE_SUCCESS:
-            printf("\t# REC-WITH %s SET-VOTED\n",idCode);
-            break;
-        case ALREADY_VOTED:
-            printf("\t# REC-WITH %s ALREADY-VOTED\n",idCode);
-            break;
-        case VOTER_NOT_FOUND:
-            printf("\t# KEY %s NOT-in-structs\n",idCode);
-            break;
-        default:
-            break;
+void Vote(Curator cur,string idCode) {
+    // Search BF first!
+    if (BF_Search(cur->BF,idCode)) {
+        switch (RBT_Vote(cur->RBT,idCode))
+        {
+            case VOTE_SUCCESS:
+                printf("\t# REC-WITH %s SET-VOTED\n",idCode);
+                break;
+            case ALREADY_VOTED:
+                printf("\t# REC-WITH %s ALREADY-VOTED\n",idCode);
+                break;
+            case VOTER_NOT_FOUND:
+                printf("\t# KEY %s NOT-in-structs\n",idCode);
+                break;
+            default:
+                break;
+        }
+    } else {
+        // Not in BF so definitely NOT in structs
+        printf("\t# KEY %s NOT-in-structs\n",idCode);
     }
 }
 
@@ -139,8 +163,17 @@ void Curator_Run(Curator cur) {
         printf(">");
         cmd = readNextWord(stdin);
         // 1. lbf key
+        if (!strcmp(cmd,"lbf")) {
+            // Read key
+            param = readNextWord(stdin);
+            if (BF_Search(cur->BF,param)) {
+                printf("\t# KEY %s POSSIBLY-IN REGISTRY\n",param);
+            } else {
+                printf("\t# KEY %s Not-in-LBF\n",param);
+            }
+        }
         // 2. lrb key
-        if (!strcmp(cmd,"lrb")) {
+        else if (!strcmp(cmd,"lrb")) {
             // Read key
             param = readNextWord(stdin);
             if (RBT_Search(cur->RBT,param) != NULL) {
@@ -154,24 +187,35 @@ void Curator_Run(Curator cur) {
         else if (!strcmp(cmd,"find")) {
             // Read key
             param = readNextWord(stdin);
-            // Todo: Search BF first
-            Voter v;
-            if ((v = RBT_Search(cur->RBT,param)) == NULL) {
-                printf("\t# REC-WITH %s NOT-in-structs\n",param);
+            // Search BF first
+            if (BF_Search(cur->BF,param)) {
+                // Then search the RBT
+                Voter v;
+                if ((v = RBT_Search(cur->RBT,param)) == NULL) {
+                    printf("\t# REC-WITH %s NOT-in-structs\n",param);
+                } else {
+                    printf("\t# REC-IS: ");
+                    Voter_Print(v);
+                    printf("\n");
+                }
             } else {
-                printf("\t# REC-IS: ");
-                Voter_Print(v);
-                printf("\n");
+                // Not in BF so definitely NOT in structs
+                printf("\t# REC-WITH %s NOT-in-structs\n",param);
             }
         }
         // 5. delete key
         else if (!strcmp(cmd,"delete")) {
             // Read key
             param = readNextWord(stdin);
-            // Todo: Search and delete from BF first and then from postal codes
-            if (RBT_Delete(cur->RBT,param)) {
-                printf("\t# DELETED %s FROM-structs\n",param);
+            // Search and delete from BF first and then from postal codes
+            if (BF_Search(cur->BF,param)) {
+                if (RBT_Delete(cur->RBT,param)) {
+                    printf("\t# DELETED %s FROM-structs\n",param);
+                } else {
+                    printf("\t# KEY %s NOT-in-structs\n",param);
+                }
             } else {
+                // Not in BF so definitely NOT in structs
                 printf("\t# KEY %s NOT-in-structs\n",param);
             }
         }
@@ -219,6 +263,7 @@ void Curator_Run(Curator cur) {
 
 void Curator_Destroy(Curator *cur) {
     RBT_Destroy(&(*cur)->RBT);
+    BF_Destroy(&(*cur)->BF);
     free(*cur);
     *cur = NULL;
 }

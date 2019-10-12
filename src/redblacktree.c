@@ -159,7 +159,7 @@ int RBT_Insert(RedBlackTree tree,Voter v) {
     return 1;
 }
 
-Voter RBT_Search(RedBlackTree tree,char *id) {
+Voter RBT_Search(RedBlackTree tree,string id) {
     RBTNode x = tree->root;
     while (x != tree->nullNode)
     {
@@ -176,7 +176,7 @@ Voter RBT_Search(RedBlackTree tree,char *id) {
     return x != NULL ? x->value : NULL;
 }
 
-RBTNode searchNode(RedBlackTree tree,char *id) {
+RBTNode searchNode(RedBlackTree tree,string id) {
     RBTNode root = tree->root;
     while (root != tree->nullNode) {
         // Id of wanted voter is less than the current voter id so look at the left subtree
@@ -192,7 +192,7 @@ RBTNode searchNode(RedBlackTree tree,char *id) {
     return root;
 }
 
-int RBT_Vote(RedBlackTree tree,char *id) {
+int RBT_Vote(RedBlackTree tree,string id) {
     //Check if tree is initialized
     if (tree != NULL) {
         // Search for the node with the voter that has the wanted id code
@@ -297,7 +297,7 @@ void rebalanceAfterDeletion(RedBlackTree tree,RBTNode x) {
     }
 }
 
-int RBT_Delete(RedBlackTree tree,char *id) {
+int RBT_Delete(RedBlackTree tree,string id) {
     // Get the node which has the voter with the wanted idCode
     RBTNode z,x;
     if ((z = searchNode(tree,id)) != tree->nullNode) {

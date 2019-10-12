@@ -2,6 +2,7 @@
 #define REDBLACKTREE_H
 
 #include "../headers/voter.h"
+#include "../headers/utilities.h"
 
 // RBT_VOTE results
 #define VOTE_SUCCESS 1
@@ -12,10 +13,10 @@ typedef struct redblacktree *RedBlackTree;
 
 int RBT_Initialize(RedBlackTree*);
 int RBT_Insert(RedBlackTree,Voter);
-Voter RBT_Search(RedBlackTree,char*);
-int RBT_Vote(RedBlackTree,char*);
+Voter RBT_Search(RedBlackTree,string);
+int RBT_Vote(RedBlackTree,string);
 int RBT_NumVoted(RedBlackTree);
-int RBT_Delete(RedBlackTree,char*);
+int RBT_Delete(RedBlackTree,string);
 int RBT_Destroy(RedBlackTree*);
 
 #endif
