@@ -4,9 +4,9 @@
 #include "../headers/bloomfilter.h"
 #include "../headers/utilities.h"
 
-#define hash1(str,size) hash(str,9,7,659,size)
-#define hash2(str,size) hash(str,21,13,347,size)
-#define hash3(str,size) hash(str,12,9,467,size)
+#define hash1(str,size) hash(str,256,size)
+#define hash2(str,size) hash(str,128,size)
+#define hash3(str,size) hash(str,149,size)
 
 struct bloomfilter
 {
@@ -117,22 +117,20 @@ int BF_Initialize(BloomFilter *bf,unsigned int wordsToInsert) {
     return 1;
 }
 
-unsigned long long hash(char *str,unsigned long long a,unsigned long long b,unsigned long long p,unsigned int size) {
+unsigned long long hash(char *str,int charbase,unsigned int size) {
     // Compute str key
     int i;
     unsigned long long k = 0,l = strlen(str),base = 1;
     for (i = l - 1;i >= 0;i--) {
         k = (k % size + (base * (str[i] % size)) % size) % size;
-        base = (base * (256 % size)) % size;
+        base = (base * (charbase % size)) % size;
     }
     // Return global hash 
-    return ((a * k + b) % p) % size;
+    return k;
 }
 
 int BF_Insert(BloomFilter bf,string str) {
     if (str != NULL) {
-        //if (hash1(str,bf->size) == hash2(str,bf->size) || hash2(str,bf->size) == hash3(str,bf->size))
-            //printf("Size = %u Word = %s h1 = %lld h2 = %lld h3 = %lld\n",bf->size,str,hash1(str,bf->size),hash2(str,bf->size),hash3(str,bf->size));
         bf->bitstring[hash1(str,bf->size)] = bf->bitstring[hash2(str,bf->size)] = bf->bitstring[hash3(str,bf->size)] = 1;
         return 1;
     } else {
