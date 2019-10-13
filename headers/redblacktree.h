@@ -14,6 +14,7 @@ typedef struct redblacktree *RedBlackTree;
 int RBT_Initialize(RedBlackTree*);
 int RBT_Insert(RedBlackTree,Voter);
 Voter RBT_Search(RedBlackTree,string);
+string RBT_Next_Id(RedBlackTree);
 int RBT_Vote(RedBlackTree,string);
 int RBT_NumVoted(RedBlackTree);
 int RBT_Delete(RedBlackTree,string);

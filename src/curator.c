@@ -14,13 +14,14 @@ struct curator
     FILE *inputfile;
     FILE *outputfile;
     int numofupdates;
+    int inserts;
     RedBlackTree RBT;
     BloomFilter BF;
 };
 
-char *readNextWord(FILE *input) {
+string readNextWord(FILE *input) {
     // Ignore whitespace
-    char ch;
+    char ch = 0;
     while (!feof(input) && ((ch = fgetc(input)) < 'A' || ('Z' < ch && ch < 'a') || ch > 'z'));
     if (feof(input))
         return NULL;
@@ -54,7 +55,7 @@ char *readNextWord(FILE *input) {
         curBufSize += sizeof(char);
     }
     buf[i] = '\0';
-    char *word;
+    string word;
     if((word = (string)malloc((strlen(buf) + 1) * sizeof(char))) == NULL) {
         not_enough_memory();
         return NULL;
@@ -65,7 +66,7 @@ char *readNextWord(FILE *input) {
 }
 
 char readGender(FILE *input) {
-    char ch;
+    char ch = 0;
     // Ignore whitespace
     while (!feof(input) && ((ch = fgetc(input)) < 'A' || ('Z' < ch && ch < 'a') || ch > 'z'));
     return ch;
@@ -93,6 +94,7 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     (*cur)->inputfile = inputfile;
     (*cur)->outputfile = outputfile;
     (*cur)->numofupdates = numofupdates;
+    (*cur)->inserts = 0;
     // Initialize the RBT
     if (!RBT_Initialize(&((*cur)->RBT))) {
         return 0;
@@ -103,7 +105,7 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     }
     // Read the records of all voters and insert them to the data structures
     char gender;
-    char *idCode,*firstname,*lastname;
+    string idCode,firstname,lastname;
     int age,zip;
     while ((idCode = readNextWord(inputfile)) != NULL)
     {
@@ -124,9 +126,9 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
         // Insert her/him to the BF
         BF_Insert((*cur)->BF,idCode);
         // Free unecessary memory
-        free(idCode);
-        free(firstname);
-        free(lastname);
+        DestroyString(&idCode);
+        DestroyString(&lastname);
+        DestroyString(&firstname);
     }
     return 1;
 }
@@ -143,7 +145,7 @@ void Vote(Curator cur,string idCode) {
                 printf("\t# REC-WITH %s ALREADY-VOTED\n",idCode);
                 break;
             case VOTER_NOT_FOUND:
-                printf("\t# KEY %s NOT-in-structs\n",idCode);
+                printf("\t# key %s NOT-in-structs\n",idCode);
                 break;
             default:
                 break;
@@ -152,6 +154,30 @@ void Vote(Curator cur,string idCode) {
         // Not in BF so definitely NOT in structs
         printf("\t# KEY %s NOT-in-structs\n",idCode);
     }
+}
+
+int insertRecord(Curator cur,string idCode,string firstname,string lastname,int age,int zip) {
+    Voter v;
+    Voter_Initialize(&v,idCode,firstname,lastname,age,'M',zip);
+    // Insert her/him to the RBT
+    RBT_Insert(cur->RBT,v);
+    // Check if we must increas size of the bloom filter
+    if (++cur->inserts == cur->numofupdates) {
+        if (BF_Resize(cur->BF)) {
+            // Re-insert all id's to the bloom filter
+            string id;
+            while ((id = RBT_Next_Id(cur->RBT)) != NULL)
+                BF_Insert(cur->BF,id);
+            cur->inserts = 0;
+        } else {
+            return 0;
+        }
+    } else {
+        // Insert her/him to the BF
+        BF_Insert(cur->BF,idCode);
+    }
+    printf("\t# REC-WITH %s INSERTED-IN-BF-RBT\n",idCode);
+    return 1;
 }
 
 void Curator_Run(Curator cur) {
@@ -183,6 +209,28 @@ void Curator_Run(Curator cur) {
             }
         }
         // 3. ins record
+        else if (!strcmp(cmd,"ins")) {
+            string idCode,firstname,lastname;
+            int zip,age;
+            idCode = readNextWord(stdin);
+            firstname = readNextWord(stdin);
+            lastname = readNextWord(stdin);
+            scanf("%d %d",&age,&zip);
+            // Check if he already exists
+            if (!BF_Search(cur->BF,idCode)) {
+                insertRecord(cur,idCode,firstname,lastname,age,zip);
+            } else {
+                if (!RBT_Search(cur->RBT,idCode)) {
+                    insertRecord(cur,idCode,firstname,lastname,age,zip);
+                } else {
+                    printf("\t# REC-WITH %s EXISTS\n",idCode);
+                }
+            }
+            // Free unecessary memory
+            DestroyString(&idCode);
+            DestroyString(&lastname);
+            DestroyString(&firstname);
+        }
         // 4. find key
         else if (!strcmp(cmd,"find")) {
             // Read key
@@ -231,10 +279,10 @@ void Curator_Run(Curator cur) {
             param = readNextWord(stdin);
             FILE *fileofkeys = fopen(param,"r");
             // Vote all codes contained in the fileofkeys
-            char *idCode;
+            string idCode;
             while ((idCode = readNextWord(fileofkeys)) != NULL) {
                 Vote(cur,idCode);
-                free(idCode);
+                DestroyString(&idCode);
             }
             fclose(fileofkeys);
         }
@@ -252,12 +300,8 @@ void Curator_Run(Curator cur) {
         else {
             printf("Wrong Command\n");
         }
-        if (param != NULL) {
-            free(param);
-            param = NULL;
-        }
-        free(cmd);
-        cmd = NULL;
+        DestroyString(&param);
+        DestroyString(&cmd);
     }
 }
 

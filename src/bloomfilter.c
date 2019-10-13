@@ -11,7 +11,7 @@
 struct bloomfilter
 {
     unsigned int size;
-    unsigned int totalWords;
+    unsigned int words;
     char *bitstring;
 };
 
@@ -69,6 +69,11 @@ int isPrime(unsigned int num) {
             loop = 0;
     }
     return 1;
+    /*int i;
+    for (i = 2;i*i <= num;i++)
+        if (num % i == 0)
+            return 0;
+    return 1;*/
 }
 
 unsigned int getSize(int wordsToInsert) {
@@ -78,21 +83,21 @@ unsigned int getSize(int wordsToInsert) {
         if(size == 2)
         {
             if(size >= 3 * wordsToInsert)
-                break;
+                return size;
             size++;
         }
         else if(size == 3)
         {
             if(size >= 3 * wordsToInsert)
-                break;
+                return size;
             size += 2;
         }
         else
         {
             if(size >= 3 * wordsToInsert && isPrime(size))
-                break;
-            if(size >= 3 * wordsToInsert && isPrime(size))
-                break;
+                return size;
+            if(size + 2 >= 3 * wordsToInsert && isPrime(size + 2))
+                return size + 2;
             size += 6;
         }
     }
@@ -107,7 +112,7 @@ int BF_Initialize(BloomFilter *bf,unsigned int wordsToInsert) {
     }
     // Set the size of the bitstring equal to the first prime number which is at least 3 times the wordsToInsert
     (*bf)->size = getSize(wordsToInsert);
-    (*bf)->totalWords = 0;
+    (*bf)->words = 0;
     // Allocate space for the bit string
     if (((*bf)->bitstring = (char*)malloc((*bf)->size * sizeof(char))) == NULL) {
         not_enough_memory();
@@ -132,6 +137,7 @@ unsigned long long hash(char *str,int charbase,unsigned int size) {
 int BF_Insert(BloomFilter bf,string str) {
     if (str != NULL) {
         bf->bitstring[hash1(str,bf->size)] = bf->bitstring[hash2(str,bf->size)] = bf->bitstring[hash3(str,bf->size)] = 1;
+        bf->words++;
         return 1;
     } else {
         return 0;
@@ -140,6 +146,23 @@ int BF_Insert(BloomFilter bf,string str) {
 
 int BF_Search(BloomFilter bf,string str) {
     return str != NULL ? bf->bitstring[hash1(str,bf->size)] & bf->bitstring[hash2(str,bf->size)] & bf->bitstring[hash3(str,bf->size)] : 0;
+}
+
+int BF_Resize(BloomFilter bf) {
+    if (bf != NULL) {
+        // Calculate new size
+        bf->size = getSize(bf->words);
+        // Allocate more memory for the bloom filter
+        if ((bf->bitstring = (char*)realloc(bf->bitstring,(bf->size) * sizeof(char))) == NULL) {
+            not_enough_memory();
+            return 0;
+        }
+        //Clear the bitstring to insert again all the elements
+        memset(bf->bitstring,0,(bf->size) * sizeof(char));
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 int BF_Destroy(BloomFilter *bf) {

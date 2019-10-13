@@ -25,6 +25,7 @@ struct redblacktree
     int numVoted;
     RBTNode root;
     RBTNode nullNode;
+    RBTNode current;
 };
 
 int RBT_Initialize(RedBlackTree *tree) {
@@ -43,6 +44,7 @@ int RBT_Initialize(RedBlackTree *tree) {
     (*tree)->nullNode->parent = (*tree)->nullNode;
     (*tree)->nullNode->left = (*tree)->nullNode;
     (*tree)->nullNode->right = (*tree)->nullNode;
+    (*tree)->current = (*tree)->nullNode;
     (*tree)->size = 0;
     (*tree)->numVoted = 0;
     (*tree)->root = (*tree)->nullNode;
@@ -167,13 +169,13 @@ Voter RBT_Search(RedBlackTree tree,string id) {
         if (strcmp(id,Voter_Get_IdCode(x->value)) < 0) {
             x = x->left;
         } else if (strcmp(id,Voter_Get_IdCode(x->value)) > 0) {
-            // Id of wanted voter is less than the current voter id so look at the left subtree
+            // Id of wanted voter is less than the current voter id so look at the right subtree
             x = x->right;
         } else {
             break;
         }
     }
-    return x != NULL ? x->value : NULL;
+    return x->value;
 }
 
 RBTNode searchNode(RedBlackTree tree,string id) {
@@ -190,6 +192,25 @@ RBTNode searchNode(RedBlackTree tree,string id) {
         }
     }
     return root;
+}
+
+string RBT_Next_Id(RedBlackTree tree) {
+    if (tree->current != tree->nullNode) {
+        if (tree->current->right != tree->nullNode) {
+            tree->current = tree->current->right;
+            while (tree->current->left != tree->nullNode)
+                tree->current = tree->current->left;
+        } else {
+            while (tree->current->parent != tree->nullNode && tree->current == tree->current->parent->right)
+                tree->current = tree->current->parent;
+            tree->current = tree->current->parent;
+        }
+    } else {
+        tree->current = tree->root;
+        while (tree->current->left != tree->nullNode)
+            tree->current = tree->current->left;
+    }
+    return  tree->current != tree->nullNode ? Voter_Get_IdCode(tree->current->value) : NULL;
 }
 
 int RBT_Vote(RedBlackTree tree,string id) {

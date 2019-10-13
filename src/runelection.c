@@ -31,7 +31,6 @@ int main(int argc, char const *argv[])
             return 0;
         }
     }
-    printf("%d\n",numofupdates);
     if(Curator_Initialize(&curator,inputfile,outputfile,numofupdates)) {
         Curator_Run(curator);
         Curator_Destroy(&curator);
