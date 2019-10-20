@@ -6,6 +6,7 @@
 #include "../headers/redblacktree.h"
 #include "../headers/voter.h"
 #include "../headers/bloomfilter.h"
+#include "../headers/postcodes.h"
 
 #define BUFFER_SIZE 15
 
@@ -17,12 +18,13 @@ struct curator
     int inserts;
     RedBlackTree RBT;
     BloomFilter BF;
+    PostCodes PC;
 };
 
 string readNextWord(FILE *input) {
     // Ignore whitespace
     char ch = 0;
-    while (!feof(input) && ((ch = fgetc(input)) < 'A' || ('Z' < ch && ch < 'a') || ch > 'z'));
+    while (!feof(input) && ((ch = fgetc(input)) < 33));
     if (feof(input))
         return NULL;
     ungetc(ch,input);
@@ -46,6 +48,9 @@ string readNextWord(FILE *input) {
         }
         buf[i++] = ch;
     }
+    // If last character was new line feed return it for potential future use in voted command
+    if (ch == '\n')
+        ungetc(ch,input);
     // Buffer full so allocate 1 more byte for end of string character to fit
     if (i == curBufSize) {
         if ((buf = (string)realloc(buf,(1 + curBufSize) * sizeof(char))) == NULL) {
@@ -67,7 +72,7 @@ string readNextWord(FILE *input) {
 
 char readGender(FILE *input) {
     char ch = 0;
-    // Ignore whitespace
+    // Ignore other characters
     while (!feof(input) && ((ch = fgetc(input)) < 'A' || ('Z' < ch && ch < 'a') || ch > 'z'));
     return ch;
 }
@@ -82,6 +87,25 @@ unsigned int lines(FILE *file) {
     // Go to the start of the file in order to read it again later
     fseek(file,0,SEEK_SET);
     return lines - 1;
+}
+
+int readPostCode(FILE *input) {
+    // Ignore other characters than numbers and stop at new line feed(enter)
+    char ch;
+    while ((ch = fgetc(input)) != 10 && (ch < '0' || ch > '9'));
+    if (ch != 10)
+        ungetc(ch,input);
+    else
+        return -1;
+    int num = 0;
+    while ((ch = fgetc(input)) != 10 && ch >= '0' && ch <= '9') {
+        num *= 10;
+        num += ch - '0';
+    }
+    // If last character when reading digits was not new line feed skip rest characters until new line feed(enter)
+    if (ch != 10)
+        while ((ch = fgetc(input)) != 10);
+    return num;
 }
 
 int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofupdates) {
@@ -101,6 +125,10 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     }
     // Initialize the BF
     if (!BF_Initialize(&((*cur)->BF),lines(inputfile))) {
+        return 0;
+    }
+    // Initialize the PostCodes Data Structure
+    if (!PostCodes_Initialize(&((*cur)->PC))) {
         return 0;
     }
     // Read the records of all voters and insert them to the data structures
@@ -125,6 +153,8 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
         RBT_Insert((*cur)->RBT,v);
         // Insert her/him to the BF
         BF_Insert((*cur)->BF,idCode);
+        // Insert her/him to the PostCodes data structure
+        PostCodes_InsertVoter((*cur)->PC,v);
         // Free unecessary memory
         DestroyString(&idCode);
         DestroyString(&lastname);
@@ -286,12 +316,20 @@ void Curator_Run(Curator cur) {
             }
             fclose(fileofkeys);
         }
-        // 8. voted
         else if (!strcmp(cmd,"voted")) {
-            printf("\t# NUMBER %d\n",RBT_NumVoted(cur->RBT));
+            int postcode;
+            if ((postcode = readPostCode(stdin)) == -1) {
+                // 8. voted
+                printf("\t# NUMBER %d\n",RBT_NumVoted(cur->RBT));
+            } else {
+                // 9. voted postcode
+                PostCodes_PrintPostCode(cur->PC,postcode);
+            }
         }
-        // 9. voted postcode
         // 10. votedperpc
+        else if (!strcmp(cmd,"votedperpc")) {
+            PostCodes_PrintAll(cur->PC);
+        }
         // 11. exit
         else if (!strcmp(cmd,"exit")) {
             run = 0;
@@ -308,6 +346,7 @@ void Curator_Run(Curator cur) {
 void Curator_Destroy(Curator *cur) {
     RBT_Destroy(&(*cur)->RBT);
     BF_Destroy(&(*cur)->BF);
+    PostCodes_Destroy(&(*cur)->PC);
     free(*cur);
     *cur = NULL;
 }

@@ -8,11 +8,13 @@
 #define hash2(str,size) hash(str,128,size)
 #define hash3(str,size) hash(str,149,size)
 
+#define CEIL(a,b) (((a)+(b)-1)/(b))
+
 struct bloomfilter
 {
     unsigned int size;
     unsigned int words;
-    unsigned long long *bitstring;
+    char *bitstring;
 };
 
 // Calculates (base^exp) mod modulus which is required for miller rabin primility test
@@ -114,11 +116,11 @@ int BF_Initialize(BloomFilter *bf,unsigned int wordsToInsert) {
     (*bf)->size = getSize(wordsToInsert);
     (*bf)->words = 0;
     // Allocate space for the bit string
-    if (((*bf)->bitstring = (unsigned long long*)malloc(((*bf)->size * sizeof(unsigned long long))/(8*sizeof(unsigned long long)))) == NULL) {
+    if (((*bf)->bitstring = (char*)malloc(CEIL((*bf)->size * sizeof(char),8*sizeof(char)))) == NULL) {
         not_enough_memory();
         return 0;
     }
-    memset((*bf)->bitstring,0,((*bf)->size * sizeof(unsigned long long))/(8*sizeof(unsigned long long)));
+    memset((*bf)->bitstring,0,CEIL((*bf)->size * sizeof(char),8*sizeof(char)));
     return 1;
 }
 
@@ -137,9 +139,9 @@ unsigned long long hash(char *str,int charbase,unsigned int size) {
 int BF_Insert(BloomFilter bf,string str) {
     unsigned long long h1 = hash1(str,bf->size),h2 = hash2(str,bf->size),h3 = hash3(str,bf->size);
     if (str != NULL) {
-        bf->bitstring[h1 >> 6] |= ((unsigned long long)1 << (h1 % (8*sizeof(unsigned long long))));
-        bf->bitstring[h2 >> 6] |= ((unsigned long long)1 << (h2 % (8*sizeof(unsigned long long))));
-        bf->bitstring[h3 >> 6] |= ((unsigned long long)1 << (h3 % (8*sizeof(unsigned long long))));
+        bf->bitstring[h1 >> 3] |= ((char)1 << (h1 % (8*sizeof(char))));
+        bf->bitstring[h2 >> 3] |= ((char)1 << (h2 % (8*sizeof(char))));
+        bf->bitstring[h3 >> 3] |= ((char)1 << (h3 % (8*sizeof(char))));
         bf->words++;
         return 1;
     } else {
@@ -151,9 +153,9 @@ int BF_Search(BloomFilter bf,string str) {
     if (str != NULL) {
         unsigned long long h1 = hash1(str,bf->size),h2 = hash2(str,bf->size),h3 = hash3(str,bf->size);
         unsigned long long a,b,c;
-        a = (bf->bitstring[h1 >> 6] & ((unsigned long long)1 << (h1 % (8*sizeof(unsigned long long)))));
-        b = (bf->bitstring[h2 >> 6] & ((unsigned long long)1 << (h2 % (8*sizeof(unsigned long long)))));
-        c = (bf->bitstring[h3 >> 6] & ((unsigned long long)1 << (h3 % (8*sizeof(unsigned long long)))));
+        a = (bf->bitstring[h1 >> 3] & ((char)1 << (h1 % (8*sizeof(char)))));
+        b = (bf->bitstring[h2 >> 3] & ((char)1 << (h2 % (8*sizeof(char)))));
+        c = (bf->bitstring[h3 >> 3] & ((char)1 << (h3 % (8*sizeof(char)))));
         return a && b && c;
     } else {
         return 0;
@@ -165,12 +167,12 @@ int BF_Resize(BloomFilter bf) {
         // Calculate new size
         bf->size = getSize(bf->words);
         // Allocate more memory for the bloom filter
-        if ((bf->bitstring = (unsigned long long*)realloc(bf->bitstring,((bf->size) * sizeof(unsigned long long))/(8*sizeof(unsigned long long)))) == NULL) {
+        if ((bf->bitstring = (char*)realloc(bf->bitstring,((bf->size) * sizeof(char))/(8*sizeof(char)))) == NULL) {
             not_enough_memory();
             return 0;
         }
         //Clear the bitstring to insert again all the elements
-        memset(bf->bitstring,0,(bf->size * sizeof(unsigned long long))/(8*sizeof(unsigned long long)));
+        memset(bf->bitstring,0,(bf->size * sizeof(char))/(8*sizeof(char)));
         return 1;
     } else {
         return 0;

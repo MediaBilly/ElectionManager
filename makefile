@@ -1,6 +1,6 @@
 CC = gcc
 FLAGS = -Wall
-TARGETS = src/runelection.o src/curator.o src/voter.o src/redblacktree.o src/utilities.o src/bloomfilter.o
+TARGETS = src/runelection.o src/curator.o src/voter.o src/redblacktree.o src/utilities.o src/bloomfilter.o src/postcodes.o
 
 runelection:$(TARGETS)
 	$(CC) $(FLAGS) -o runelection $(TARGETS)
@@ -22,6 +22,9 @@ src/utilities.o:src/utilities.c
 
 src/bloomfilter.o:src/bloomfilter.c
 	$(CC) $(FLAGS) -o src/bloomfilter.o -c src/bloomfilter.c
+
+src/postcodes.o:src/postcodes.c
+	$(CC) $(FLAGS) -o src/postcodes.o -c src/postcodes.c
 
 .PHONY : clean
 

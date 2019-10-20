@@ -16,7 +16,6 @@ struct rbtnode
     RBTNode parent;
     RBTNode left;
     RBTNode right;
-    int voted;
 };
 
 struct redblacktree
@@ -147,7 +146,6 @@ int RBT_Insert(RedBlackTree tree,Voter v) {
     z->parent = y;
     z->value = v;
     z->left = z->right = tree->nullNode;
-    z->voted = 0;
     //First node
     if (y == tree->nullNode) {
         tree->root = z;
@@ -219,8 +217,8 @@ int RBT_Vote(RedBlackTree tree,string id) {
         // Search for the node with the voter that has the wanted id code
         RBTNode node;
         if ((node = searchNode(tree,id)) != tree->nullNode) {
-            if (!node->voted) {
-                node->voted = 1;
+            if (!Voter_HasVoted(node->value)) {
+                Voter_Vote(node->value);
                 tree->numVoted++;
                 return VOTE_SUCCESS;
             } else {
@@ -354,7 +352,7 @@ int RBT_Delete(RedBlackTree tree,string id) {
             rebalanceAfterDeletion(tree,x);
         }
         // Destroy toDel node
-        if (z->voted) {
+        if (Voter_HasVoted(z->value)) {
             tree->numVoted--;
         }
         DestroyNode(z);

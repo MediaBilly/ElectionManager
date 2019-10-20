@@ -13,6 +13,7 @@ struct voter
     int age;
     char gender;
     int zip;
+    int hasvoted;
 };
 
 int Voter_Initialize(Voter *v,string idCode,string firstname,string lastname,int age,char gender,int zip) {
@@ -38,6 +39,7 @@ int Voter_Initialize(Voter *v,string idCode,string firstname,string lastname,int
     (*v)->age = age;
     (*v)->gender = gender;
     (*v)->zip = zip;
+    (*v)->hasvoted = 0;
     return 1;
 }
 
@@ -63,6 +65,16 @@ char Voter_Get_Gender(Voter v) {
 
 int Voter_Get_Zip(Voter v) {
     return v->zip;
+}
+
+int Voter_HasVoted(Voter v) {
+    return v != NULL ? v->hasvoted : 0;
+}
+
+void Voter_Vote(Voter v) {
+    if (v != NULL) {
+        v->hasvoted = 1;
+    } 
 }
 
 void Voter_Print(Voter v) {
