@@ -15,7 +15,7 @@ struct curator
     FILE *inputfile;
     FILE *outputfile;
     int numofupdates;
-    int inserts;
+    int updates;
     RedBlackTree RBT;
     BloomFilter BF;
     PostCodes PC;
@@ -118,7 +118,7 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     (*cur)->inputfile = inputfile;
     (*cur)->outputfile = outputfile;
     (*cur)->numofupdates = numofupdates;
-    (*cur)->inserts = 0;
+    (*cur)->updates = 0;
     // Initialize the RBT
     if (!RBT_Initialize(&((*cur)->RBT))) {
         return 0;
@@ -186,26 +186,31 @@ void Vote(Curator cur,string idCode) {
     }
 }
 
-int insertRecord(Curator cur,string idCode,string firstname,string lastname,int age,int zip) {
-    Voter v;
-    Voter_Initialize(&v,idCode,firstname,lastname,age,'M',zip);
-    // Insert her/him to the RBT
-    RBT_Insert(cur->RBT,v);
-    // Check if we must increas size of the bloom filter
-    if (++cur->inserts == cur->numofupdates) {
+int updateBF(Curator cur) {
+    if (++cur->updates == cur->numofupdates) {
         if (BF_Resize(cur->BF)) {
             // Re-insert all id's to the bloom filter
             string id;
             while ((id = RBT_Next_Id(cur->RBT)) != NULL)
                 BF_Insert(cur->BF,id);
-            cur->inserts = 0;
+            cur->updates = 0;
         } else {
             return 0;
         }
-    } else {
-        // Insert her/him to the BF
-        BF_Insert(cur->BF,idCode);
     }
+    return 1;
+}
+
+int insertRecord(Curator cur,string idCode,string firstname,string lastname,int age,int zip) {
+    Voter v;
+    Voter_Initialize(&v,idCode,firstname,lastname,age,'M',zip);
+    // Insert her/him to the RBT
+    RBT_Insert(cur->RBT,v);
+    // Insert her/him to the BF
+    BF_Insert(cur->BF,idCode);
+    // Check if we must increase size of the bloom filter
+    if (!updateBF(cur))
+        return 0;
     printf("\t# REC-WITH %s INSERTED-IN-BF-RBT\n",idCode);
     return 1;
 }
@@ -287,7 +292,16 @@ void Curator_Run(Curator cur) {
             param = readNextWord(stdin);
             // Search and delete from BF first and then from postal codes
             if (BF_Search(cur->BF,param)) {
-                if (RBT_Delete(cur->RBT,param)) {
+                Voter v = RBT_Search(cur->RBT,param);
+                if (v != NULL) {
+                    // Delete him from postcodes too
+                    PostCodes_DeleteVoter(cur->PC,v);
+                    // Delete him from the RBT
+                    RBT_Delete(cur->RBT,param);
+                    // Delete him from BF too
+                    BF_Delete(cur->BF);
+                    // Check if we must decrease size of the bloom filter
+                    updateBF(cur);
                     printf("\t# DELETED %s FROM-structs\n",param);
                 } else {
                     printf("\t# KEY %s NOT-in-structs\n",param);

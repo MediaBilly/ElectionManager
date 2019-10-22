@@ -8,6 +8,7 @@ typedef struct bloomfilter *BloomFilter;
 int BF_Initialize(BloomFilter*,unsigned int);
 int BF_Insert(BloomFilter,string);
 int BF_Search(BloomFilter,string);
+void BF_Delete(BloomFilter);
 int BF_Resize(BloomFilter);
 int BF_Destroy(BloomFilter*);
 

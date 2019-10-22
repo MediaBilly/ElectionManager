@@ -149,6 +149,12 @@ int BF_Insert(BloomFilter bf,string str) {
     }
 }
 
+void BF_Delete(BloomFilter bf) {
+    if (bf != NULL) {
+        bf->words--;
+    }
+}
+
 int BF_Search(BloomFilter bf,string str) {
     if (str != NULL) {
         unsigned long long h1 = hash1(str,bf->size),h2 = hash2(str,bf->size),h3 = hash3(str,bf->size);

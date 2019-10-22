@@ -116,6 +116,40 @@ int PostCodes_InsertVoter(PostCodes pc,Voter v) {
     return 1;
 }
 
+void PostCodes_DeleteVoter(PostCodes pc,Voter v) {
+    // Calculate hash for postcode
+    unsigned long long h = hashPostCode(Voter_Get_Zip(v),pc);
+    // Search for the list of the voters who have the wanted postcode
+    PostCodeChainNode pcNode = pc->table[h];
+    while (pcNode != NULL && pcNode->postcode != Voter_Get_Zip(v)) 
+        pcNode = pcNode->next;
+    if (pcNode != NULL) {
+        ListNode node = pcNode->voterList;
+        // Search for the wanted voter
+        // If he is the first one in the list just delete him
+        printf("%s %s\n",Voter_Get_IdCode(node->v),Voter_Get_IdCode(v));
+        if (!strcmp(Voter_Get_IdCode(node->v),Voter_Get_IdCode(v))) {
+            // Make the list start pointing to the next node
+            pcNode->voterList = pcNode->voterList->next;
+            // Delete the old first node
+            free(node);
+        } else {
+            // Otherwise look for him in the rest of the list
+            ListNode prev = node;
+            node = node->next;
+            while (node != NULL && strcmp(Voter_Get_IdCode(node->v),Voter_Get_IdCode(v))) {
+                prev = prev->next;
+                node = node->next;
+            }
+            // If found delete him
+            if (node != NULL) {
+                prev->next = node->next;
+                free(node);
+            }
+        }
+    }
+}
+
 int CountVotersWithPostCode(PostCodeChainNode pcNode) {
     // If found iterate through all it's voters and count them
     int voters = 0;
