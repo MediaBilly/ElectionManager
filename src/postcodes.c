@@ -127,7 +127,6 @@ void PostCodes_DeleteVoter(PostCodes pc,Voter v) {
         ListNode node = pcNode->voterList;
         // Search for the wanted voter
         // If he is the first one in the list just delete him
-        printf("%s %s\n",Voter_Get_IdCode(node->v),Voter_Get_IdCode(v));
         if (!strcmp(Voter_Get_IdCode(node->v),Voter_Get_IdCode(v))) {
             // Make the list start pointing to the next node
             pcNode->voterList = pcNode->voterList->next;

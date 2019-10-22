@@ -68,65 +68,81 @@ void rotateLeft(RedBlackTree tree,RBTNode x) {
     x->parent = y;
 }
 
-void rotateRight(RedBlackTree tree,RBTNode y) {
-    RBTNode x = y->left;
-    y->left = x->right;
-    if (x->right != tree->nullNode) {
-        x->right->parent = y;
+void rotateRight(RedBlackTree tree,RBTNode x) {
+    RBTNode y = x->left;
+    x->left = y->right;
+    if (y->right != tree->nullNode) {
+        y->right->parent = x;
     }
-    x->parent = y->parent;
-    if (y->parent == tree->nullNode) {
-        tree->root = x;
-    } else if (y == y->parent->left) {
-        y->parent->left = x;
+    y->parent = x->parent;
+    if (x->parent == tree->nullNode) {
+        tree->root = y;
+    } else if (x == x->parent->left) {
+        x->parent->left = y;
     } else {
-        y->parent->right = x;
+        x->parent->right = y;
     }
-    x->right = y;
-    y->parent = x;
+    y->right = x;
+    x->parent = y;
 }
 
 void rebalanceAfterInsertion(RedBlackTree tree,RBTNode z) {
     while (z->parent->col == RED) {
+        // Parent of z is in the left subtree of the grandparent of z
         if (z->parent == z->parent->parent->left) {
+            // y is the uncle of z
             RBTNode y = z->parent->parent->right;
+            // Case 1: Uncle of z is red
             if (y->col == RED) {
                 z->parent->col = BLACK;
                 y->col = BLACK;
                 z->parent->parent->col = RED;
+                // Move on to the uncle after recoloring him red (in order not to violate property 5)
                 z = z->parent->parent;
-            } else if (z == z->parent->right) {
-                z = z->parent;
-                rotateLeft(tree,z);
             } else {
+                // Case 2: Uncle of z is black and z is the right child of it's parent
+                if (z == z->parent->right) {
+                    z = z->parent;
+                    rotateLeft(tree,z);
+                }
+                // Case 3: Uncle of z is black and z is the left child of it's parent
                 z->parent->col = BLACK;
                 z->parent->parent->col = RED;
                 rotateRight(tree,z->parent->parent);
             }
-        } else {
+        }
+        // Same cases but this time parent of z is in the left subtree of the grandparent of z
+        else {
+            // y is the uncle of z
             RBTNode y = z->parent->parent->left;
+            // Case 1: Uncle of z is red
             if (y->col == RED) {
                 z->parent->col = BLACK;
                 y->col = BLACK;
                 z->parent->parent->col = RED;
+                // Move on to the uncle after recoloring him red (in order not to violate property 5)
                 z = z->parent->parent;
-            } else if (z == z->parent->left) {
-                z = z->parent;
-                rotateRight(tree,z);
             } else {
+                // Case 2: Uncle of z is black and z is the left child of it's parent
+                if (z == z->parent->left) {
+                    z = z->parent;
+                    rotateRight(tree,z);
+                }
+                // Case 3: Uncle of z is black and z is the right child of it's parent
                 z->parent->col = BLACK;
                 z->parent->parent->col = RED;
                 rotateLeft(tree,z->parent->parent);
             }
         }
     }
+    // Final step:color root black in order not to violate property 2
     tree->root->col = BLACK;
 }
 
 int RBT_Insert(RedBlackTree tree,Voter v) {
     RBTNode y = tree->nullNode;
     RBTNode x = tree->root;
-    // Get the location for the nrw node to be inserted to based on the bst order property
+    // Get the location for the new node to be inserted to based on the bst order property
     while (x != tree->nullNode) {
         y = x;
         // IdCode of new voter is less than the IdCode of the current node so insert to the left subtree
@@ -145,7 +161,6 @@ int RBT_Insert(RedBlackTree tree,Voter v) {
     // Assign it's values
     z->parent = y;
     z->value = v;
-    z->left = z->right = tree->nullNode;
     //First node
     if (y == tree->nullNode) {
         tree->root = z;
@@ -154,6 +169,7 @@ int RBT_Insert(RedBlackTree tree,Voter v) {
     } else {
         y->right = z; // Node will be inserted right to the parent
     }
+    z->left = z->right = tree->nullNode;
     z->col = RED;
     rebalanceAfterInsertion(tree,z);
     return 1;
@@ -253,7 +269,7 @@ void Transform(RedBlackTree tree,RBTNode u,RBTNode v) {
 }
 
 RBTNode findMinNode(RedBlackTree tree, RBTNode subtree) {
-    while (subtree != tree->nullNode)
+    while (subtree->left != tree->nullNode)
         subtree = subtree->left;
     return subtree;
 }
@@ -281,13 +297,12 @@ void rebalanceAfterDeletion(RedBlackTree tree,RBTNode x) {
                 w->col = RED;
                 rotateRight(tree,w);
                 w = x->parent->right;
-            } else {
-                w->col = x->parent->col;
-                x->parent->col = BLACK;
-                w->right->col = BLACK;
-                rotateLeft(tree,x->parent);
-                x = tree->root;
             }
+            w->col = x->parent->col;
+            x->parent->col = BLACK;
+            w->right->col = BLACK;
+            rotateLeft(tree,x->parent);
+            x = tree->root;
         } else {
             RBTNode w = x->parent->left;
             if (w->col == RED) {
@@ -304,13 +319,12 @@ void rebalanceAfterDeletion(RedBlackTree tree,RBTNode x) {
                 w->col = RED;
                 rotateLeft(tree,w);
                 w = x->parent->left;
-            } else {
-                w->col = x->parent->col;
-                x->parent->col = BLACK;
-                w->left->col = BLACK;
-                rotateRight(tree,x->parent);
-                x = tree->root;
             }
+            w->col = x->parent->col;
+            x->parent->col = BLACK;
+            w->left->col = BLACK;
+            rotateRight(tree,x->parent);
+            x = tree->root;
         }
         x->col = BLACK;
     }
@@ -318,9 +332,9 @@ void rebalanceAfterDeletion(RedBlackTree tree,RBTNode x) {
 
 int RBT_Delete(RedBlackTree tree,string id) {
     // Get the node which has the voter with the wanted idCode
-    RBTNode z,x;
+    RBTNode z,x,y;
     if ((z = searchNode(tree,id)) != tree->nullNode) {
-        RBTNode y = z;
+        y = z;
         Color ycolor = y->col;
         if (z->left == tree->nullNode) {
             // The node to be deleted has either a right child or no children
@@ -333,7 +347,7 @@ int RBT_Delete(RedBlackTree tree,string id) {
             Transform(tree,z,z->left);
         } else {
             // The node to be deleted has 2 children
-            RBTNode y = findMinNode(tree,z->right);
+            y = findMinNode(tree,z->right);
             ycolor = y->col;
             x = y->right;
             if (y->parent == z) {
