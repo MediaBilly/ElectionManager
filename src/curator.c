@@ -115,8 +115,8 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
         return 0;
     }
     // Initialize variables
-    (*cur)->inputfile = inputfile;
-    (*cur)->outputfile = outputfile;
+    (*cur)->inputfile = inputfile != NULL ? inputfile : stdin;
+    (*cur)->outputfile = outputfile != NULL ? outputfile : stdout;
     (*cur)->numofupdates = numofupdates;
     (*cur)->updates = 0;
     // Initialize the RBT
@@ -137,24 +137,27 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     int age,zip;
     while ((idCode = readNextWord(inputfile)) != NULL)
     {
-        if ((firstname = readNextWord(inputfile)) == NULL) {
+        if ((lastname = readNextWord(inputfile)) == NULL) {
             return 0;
         }
-        if ((lastname = readNextWord(inputfile)) == NULL) {
+        if ((firstname = readNextWord(inputfile)) == NULL) {
             return 0;
         }
         fscanf(inputfile,"%d",&age);
         gender = readGender(inputfile);
         fscanf(inputfile,"%d",&zip);
-        // Allocate memory for the new voter
-        Voter v;
-        Voter_Initialize(&v,idCode,firstname,lastname,age,gender,zip);
-        // Insert her/him to the RBT
-        RBT_Insert((*cur)->RBT,v);
-        // Insert her/him to the BF
-        BF_Insert((*cur)->BF,idCode);
-        // Insert her/him to the PostCodes data structure
-        PostCodes_InsertVoter((*cur)->PC,v);
+        // Check if a voter with the same id already exists.If not, insert him to the data structures
+        if (RBT_Search((*cur)->RBT,idCode) == NULL) {
+            // Allocate memory for the new voter
+            Voter v;
+            Voter_Initialize(&v,idCode,firstname,lastname,age,gender,zip);
+            // Insert her/him to the RBT
+            RBT_Insert((*cur)->RBT,v);
+            // Insert her/him to the BF
+            BF_Insert((*cur)->BF,idCode);
+            // Insert her/him to the PostCodes data structure
+            PostCodes_InsertVoter((*cur)->PC,v);
+        }
         // Free unecessary memory
         DestroyString(&idCode);
         DestroyString(&lastname);
@@ -169,20 +172,20 @@ void Vote(Curator cur,string idCode) {
         switch (RBT_Vote(cur->RBT,idCode))
         {
             case VOTE_SUCCESS:
-                printf("\t# REC-WITH %s SET-VOTED\n",idCode);
+                printf("# REC-WITH %s SET-VOTED\n",idCode);
                 break;
             case ALREADY_VOTED:
-                printf("\t# REC-WITH %s ALREADY-VOTED\n",idCode);
+                printf("# REC-WITH %s ALREADY-VOTED\n",idCode);
                 break;
             case VOTER_NOT_FOUND:
-                printf("\t# key %s NOT-in-structs\n",idCode);
+                printf("- KEY %s NOT-in-structs\n",idCode);
                 break;
             default:
                 break;
         }
     } else {
         // Not in BF so definitely NOT in structs
-        printf("\t# KEY %s NOT-in-structs\n",idCode);
+        printf("- KEY %s NOT-in-structs\n",idCode);
     }
 }
 
@@ -190,9 +193,9 @@ int updateBF(Curator cur) {
     if (++cur->updates == cur->numofupdates) {
         if (BF_Resize(cur->BF)) {
             // Re-insert all id's to the bloom filter
-            string id;
-            while ((id = RBT_Next_Id(cur->RBT)) != NULL)
-                BF_Insert(cur->BF,id);
+            Voter v;
+            while ((v = RBT_Next_Record(cur->RBT)) != NULL)
+                BF_Insert(cur->BF,Voter_Get_IdCode(v));
             cur->updates = 0;
         } else {
             return 0;
@@ -201,17 +204,19 @@ int updateBF(Curator cur) {
     return 1;
 }
 
-int insertRecord(Curator cur,string idCode,string firstname,string lastname,int age,int zip) {
+int insertRecord(Curator cur,string idCode,string firstname,string lastname,int age,char gender,int zip) {
     Voter v;
-    Voter_Initialize(&v,idCode,firstname,lastname,age,'M',zip);
+    Voter_Initialize(&v,idCode,firstname,lastname,age,gender,zip);
     // Insert her/him to the RBT
     RBT_Insert(cur->RBT,v);
     // Insert her/him to the BF
     BF_Insert(cur->BF,idCode);
+    // Insert her/him to the PostCodes data structure
+    PostCodes_InsertVoter(cur->PC,v);
     // Check if we must increase size of the bloom filter
     if (!updateBF(cur))
         return 0;
-    printf("\t# REC-WITH %s INSERTED-IN-BF-RBT\n",idCode);
+    printf("# REC-WITH %s INSERTED-IN-BF-RBT\n",idCode);
     return 1;
 }
 
@@ -222,43 +227,58 @@ void Curator_Run(Curator cur) {
     while (run) {
         // Read Command
         printf(">");
-        cmd = readNextWord(stdin);
+        if ((cmd = readNextWord(stdin)) == NULL) {
+            return;
+        }
         // 1. lbf key
         if (!strcmp(cmd,"lbf")) {
             // Read key
-            param = readNextWord(stdin);
+            if ((param = readNextWord(stdin)) == NULL) {
+                return;
+            }
             if (BF_Search(cur->BF,param)) {
-                printf("\t# KEY %s POSSIBLY-IN REGISTRY\n",param);
+                printf("# KEY %s POSSIBLY-IN REGISTRY\n",param);
             } else {
-                printf("\t# KEY %s Not-in-LBF\n",param);
+                printf("# KEY %s Not-in-LBF\n",param);
             }
         }
         // 2. lrb key
         else if (!strcmp(cmd,"lrb")) {
             // Read key
-            param = readNextWord(stdin);
+            if ((param = readNextWord(stdin)) == NULL) {
+                return;
+            }
             if (RBT_Search(cur->RBT,param) != NULL) {
-                printf("\t# KEY %s FOUND-IN-RBT\n",param);
+                printf("# KEY %s FOUND-IN-RBT\n",param);
             } else {
-                printf("\t# KEY %s NOT-IN-RBT\n",param);
+                printf("# KEY %s NOT-IN-RBT\n",param);
             }
         }
         // 3. ins record
         else if (!strcmp(cmd,"ins")) {
+            // Input format: key firstname lastname age gender postcode
             string idCode,firstname,lastname;
             int zip,age;
-            idCode = readNextWord(stdin);
-            firstname = readNextWord(stdin);
-            lastname = readNextWord(stdin);
-            scanf("%d %d",&age,&zip);
+            if ((idCode = readNextWord(stdin)) == NULL) {
+                return;
+            }
+            if ((firstname = readNextWord(stdin)) == NULL) {
+                return;
+            }
+            if ((lastname = readNextWord(stdin)) == NULL) {
+                return;
+            }
+            scanf("%d",&age);
+            char gender = readGender(stdin);
+            scanf("%d",&zip);
             // Check if he already exists
             if (!BF_Search(cur->BF,idCode)) {
-                insertRecord(cur,idCode,firstname,lastname,age,zip);
+                insertRecord(cur,idCode,firstname,lastname,age,gender,zip);
             } else {
                 if (!RBT_Search(cur->RBT,idCode)) {
-                    insertRecord(cur,idCode,firstname,lastname,age,zip);
+                    insertRecord(cur,idCode,firstname,lastname,age,gender,zip);
                 } else {
-                    printf("\t# REC-WITH %s EXISTS\n",idCode);
+                    printf("- REC-WITH %s EXISTS\n",idCode);
                 }
             }
             // Free unecessary memory
@@ -269,27 +289,30 @@ void Curator_Run(Curator cur) {
         // 4. find key
         else if (!strcmp(cmd,"find")) {
             // Read key
-            param = readNextWord(stdin);
+            if ((param = readNextWord(stdin)) == NULL) {
+                return;
+            }
             // Search BF first
             if (BF_Search(cur->BF,param)) {
                 // Then search the RBT
                 Voter v;
                 if ((v = RBT_Search(cur->RBT,param)) == NULL) {
-                    printf("\t# REC-WITH %s NOT-in-structs\n",param);
+                    printf("# REC-WITH %s NOT-in-structs\n",param);
                 } else {
-                    printf("\t# REC-IS: ");
-                    Voter_Print(v);
-                    printf("\n");
+                    printf("# REC-IS: ");
+                    Voter_Print(v,stdout);
                 }
             } else {
                 // Not in BF so definitely NOT in structs
-                printf("\t# REC-WITH %s NOT-in-structs\n",param);
+                printf("# REC-WITH %s NOT-in-structs\n",param);
             }
         }
         // 5. delete key
         else if (!strcmp(cmd,"delete")) {
             // Read key
-            param = readNextWord(stdin);
+            if ((param = readNextWord(stdin)) == NULL) {
+                return;
+            }
             // Search and delete from BF first and then from postal codes
             if (BF_Search(cur->BF,param)) {
                 Voter v = RBT_Search(cur->RBT,param);
@@ -302,25 +325,29 @@ void Curator_Run(Curator cur) {
                     BF_Delete(cur->BF);
                     // Check if we must decrease size of the bloom filter
                     updateBF(cur);
-                    printf("\t# DELETED %s FROM-structs\n",param);
+                    printf("# DELETED %s FROM-structs\n",param);
                 } else {
-                    printf("\t# KEY %s NOT-in-structs\n",param);
+                    printf("- KEY %s NOT-in-structs\n",param);
                 }
             } else {
                 // Not in BF so definitely NOT in structs
-                printf("\t# KEY %s NOT-in-structs\n",param);
+                printf("- KEY %s NOT-in-structs\n",param);
             }
         }
         // 6. vote key
         else if (!strcmp(cmd,"vote")) {
             // Read key
-            param = readNextWord(stdin);
+            if ((param = readNextWord(stdin)) == NULL) {
+                return;
+            }
             Vote(cur,param);
         }
         // 7. load fileofkeys
         else if (!strcmp(cmd,"load")) {
             // Open fileofkeys
-            param = readNextWord(stdin);
+            if ((param = readNextWord(stdin)) == NULL) {
+                return;
+            }
             FILE *fileofkeys = fopen(param,"r");
             // Vote all codes contained in the fileofkeys
             string idCode;
@@ -334,7 +361,7 @@ void Curator_Run(Curator cur) {
             int postcode;
             if ((postcode = readPostCode(stdin)) == -1) {
                 // 8. voted
-                printf("\t# NUMBER %d\n",RBT_NumVoted(cur->RBT));
+                printf("# NUMBER %d\n",RBT_NumVoted(cur->RBT));
             } else {
                 // 9. voted postcode
                 PostCodes_PrintPostCode(cur->PC,postcode);
@@ -355,6 +382,8 @@ void Curator_Run(Curator cur) {
         DestroyString(&param);
         DestroyString(&cmd);
     }
+    // Print final registry
+    PostCodes_PrintFinal(cur->PC,cur->outputfile);
 }
 
 void Curator_Destroy(Curator *cur) {

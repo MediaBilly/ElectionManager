@@ -149,20 +149,30 @@ void PostCodes_DeleteVoter(PostCodes pc,Voter v) {
     }
 }
 
-int CountVotersWithPostCode(PostCodeChainNode pcNode) {
+int CountVotersWithPostCode(PostCodeChainNode pcNode,int percent,int printThem,FILE *output) {
     // If found iterate through all it's voters and count them
-    int voters = 0;
+    int voters = 0,total = 0;
     if (pcNode != NULL) {
         ListNode voterNode = pcNode->voterList;
+        if (printThem) {
+            fprintf(output,"Voters With Postcode: %d\n",pcNode->postcode);
+        }
         while (voterNode != NULL) {
+            if (printThem) {
+                Voter_Print(voterNode->v,output);
+            }
             if (Voter_HasVoted(voterNode->v)) {
                 voters++;
             }
+            total++;
             voterNode = voterNode->next;
         }
         // Print amount of people with the current postcode who have voted
     }
-    return voters;
+    if (printThem) {
+        fprintf(output,"Total Voters:%d (%d%% of them voted)\n",total,(int)(((double)voters)/((double)total))*100);
+    }
+    return percent ? (((double)voters)/((double)total))*100 : voters;
 }
 
 void PostCodes_PrintPostCode(PostCodes pc,int postcode) {
@@ -172,7 +182,7 @@ void PostCodes_PrintPostCode(PostCodes pc,int postcode) {
     PostCodeChainNode pcNode = pc->table[h];
     while (pcNode != NULL && pcNode->postcode != postcode) 
         pcNode = pcNode->next;
-    int voters = pcNode != NULL ? CountVotersWithPostCode(pcNode) : 0;
+    int voters = pcNode != NULL ? CountVotersWithPostCode(pcNode,0,0,stdout) : 0;
     printf("\t# IN %d VOTERS-ARE %d\n",postcode,voters);
 }
 
@@ -184,7 +194,21 @@ void PostCodes_PrintAll(PostCodes pc) {
         // Print voters for each postcode in the current bucket
         pcNode = pc->table[i];
         while (pcNode != NULL) {
-            printf("\t# IN %d VOTERS-ARE %d\n",pcNode->postcode,CountVotersWithPostCode(pcNode));
+            printf("\t# IN %d VOTERS-ARE %d%%\n",pcNode->postcode,CountVotersWithPostCode(pcNode,1,0,stdout));
+            pcNode = pcNode->next;
+        }
+    }
+}
+
+void PostCodes_PrintFinal(PostCodes pc,FILE *output) {
+    // Iterate through all buckets of postcode chains
+    int i = 0;
+    PostCodeChainNode pcNode;
+    for (i = 0; i < pc->buckets; i++) {
+        // Print voters for each postcode in the current bucket
+        pcNode = pc->table[i];
+        while (pcNode != NULL) {
+            CountVotersWithPostCode(pcNode,0,1,output);
             pcNode = pcNode->next;
         }
     }

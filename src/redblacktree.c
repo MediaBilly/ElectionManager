@@ -5,6 +5,9 @@
 #include "../headers/voter.h"
 #include "../headers/redblacktree.h"
 
+// NOTE: The implementation of the RedBlackTree is based on the implementation(in pseudocode) from the book Introduction to Algorithms, 3rd edition 
+// by Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein (CLRS).
+
 typedef struct rbtnode *RBTNode;
 
 typedef enum color{BLACK, RED} Color;
@@ -208,7 +211,8 @@ RBTNode searchNode(RedBlackTree tree,string id) {
     return root;
 }
 
-string RBT_Next_Id(RedBlackTree tree) {
+// Get the next available idCode stored in the RBT
+Voter RBT_Next_Record(RedBlackTree tree) {
     if (tree->current != tree->nullNode) {
         if (tree->current->right != tree->nullNode) {
             tree->current = tree->current->right;
@@ -224,7 +228,7 @@ string RBT_Next_Id(RedBlackTree tree) {
         while (tree->current->left != tree->nullNode)
             tree->current = tree->current->left;
     }
-    return  tree->current != tree->nullNode ? Voter_Get_IdCode(tree->current->value) : NULL;
+    return  tree->current != tree->nullNode ? tree->current->value : NULL;
 }
 
 int RBT_Vote(RedBlackTree tree,string id) {
@@ -281,45 +285,59 @@ void DestroyNode(RBTNode node) {
 
 void rebalanceAfterDeletion(RedBlackTree tree,RBTNode x) {
     while (x != tree->root && x->col == BLACK) {
+        // x is the left child of it's parent
         if (x == x->parent->left) {
+            // Sibling(brother) of x
             RBTNode w = x->parent->right;
+            // Case 1: Sibling w of x is red
             if (w->col == RED) {
                 w->col = BLACK;
                 x->parent->col = RED;
                 rotateLeft(tree,x->parent);
                 w = x->parent->right;
             }
+            // Case 2: Sibling w of x is black and both w's children are black
             if (w->left->col == BLACK && w->right->col == BLACK) {
                 w->col = RED;
                 x = x->parent;
+            // Case 3: Sibling w of x is black, it's left child is red and it's right child is black
             } else if (w->right->col == BLACK) {
                 w->left->col = BLACK;
                 w->col = RED;
                 rotateRight(tree,w);
                 w = x->parent->right;
             }
+            // Case 4: Sibling w of x is black, and it's right child is red
             w->col = x->parent->col;
             x->parent->col = BLACK;
             w->right->col = BLACK;
             rotateLeft(tree,x->parent);
             x = tree->root;
-        } else {
+        } 
+        // Same cases but this time x is the left child of it's parent
+        else {
+            // Sibling(brother) of x
             RBTNode w = x->parent->left;
+            // Case 1: Sibling w of x is red
             if (w->col == RED) {
                 w->col = BLACK;
                 x->parent->col = RED;
                 rotateRight(tree,x->parent);
                 w = x->parent->left;
             }
+            // Case 2: Sibling w of x is black and both w's children are black
             if (w->right->col == BLACK && w->left->col == BLACK) {
                 w->col = RED;
                 x = x->parent;
-            } else if (w->left->col == BLACK) {
+            }
+            // Case 3: Sibling w of x is black, it's left child is red and it's right child is black
+            else if (w->left->col == BLACK) {
                 w->right->col = BLACK;
                 w->col = RED;
                 rotateLeft(tree,w);
                 w = x->parent->left;
             }
+            // Case 4: Sibling w of x is black, and it's right child is red
             w->col = x->parent->col;
             x->parent->col = BLACK;
             w->left->col = BLACK;

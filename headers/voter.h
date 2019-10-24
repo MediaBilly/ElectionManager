@@ -14,7 +14,7 @@ char Voter_Get_Gender(Voter);
 int Voter_Get_Zip(Voter);
 int Voter_HasVoted(Voter);
 void Voter_Vote(Voter);
-void Voter_Print(Voter);
+void Voter_Print(Voter,FILE*);
 void Voter_Destroy(Voter*);
 
 #endif

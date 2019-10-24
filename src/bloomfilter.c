@@ -17,86 +17,22 @@ struct bloomfilter
     char *bitstring;
 };
 
-// Calculates (base^exp) mod modulus which is required for miller rabin primility test
-// Algorithm Used:Modular Exponentiation Right To Left Binary Method
-/*
-    Sources:
-    https://stackoverflow.com/questions/19839457/explanation-of-right-to-left-binary-method-of-modular-arithmetic
-    https://en.wikipedia.org/wiki/Modular_exponentiation
-*/
-unsigned long long modpow(unsigned long long base,unsigned long long exp,unsigned long long modulus)
-{
-    unsigned long long result = 1;
-    while (exp > 0)
-    {
-        if(exp % 2 == 1)
-            result = (result * base) % modulus;
-        exp >>= 1;
-        base = (base * base) % modulus;
-    }
-    return result;
-}
-
-// Use miller-rabin primility test to check whether num is prime
-// Source:https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
 int isPrime(unsigned int num) {
-    unsigned int d = num - 1,r = 0,a,k,i,ok,loop = 1;
-    unsigned long long x;
-    while (d % 2 == 0)
-    {
-        r++;
-        d/=2;
-    }
-    for(a = 2;loop;a = a == 2 ? 7 : 61)
-    {
-        k = (d - 1)/2;
-        x = (a * modpow((a * a) % num,k,num)) % num;
-        if(x == 1 || x == num - 1)
-        {
-            if(a == 61)
-                break;
-            else
-                continue;
-        }
-        ok = 1;
-        for(i = 0; i < r - 1 && ok;i++)
-        {
-            x = (x * x) % num;
-            if(x == num - 1)
-                ok = 0;
-        }
-        if(ok)
+    unsigned int i;
+    for (i=2;i*i<= num;i++) {
+        if (num % i == 0)
             return 0;
-        if(a == 61)
-            loop = 0;
     }
     return 1;
 }
 
 unsigned int getSize(int wordsToInsert) {
-    unsigned int size = 2;
-    while (1)
-    {
-        if(size == 2)
-        {
-            if(size >= 3 * wordsToInsert)
-                return size;
-            size++;
-        }
-        else if(size == 3)
-        {
-            if(size >= 3 * wordsToInsert)
-                return size;
-            size += 2;
-        }
+    unsigned int size = (3*wordsToInsert) % 2 == 0 ? 3*wordsToInsert + 1 : 3*wordsToInsert;
+    while (1) {
+        if (isPrime(size))
+            return size;
         else
-        {
-            if(size >= 3 * wordsToInsert && isPrime(size))
-                return size;
-            if(size + 2 >= 3 * wordsToInsert && isPrime(size + 2))
-                return size + 2;
-            size += 6;
-        }
+            size += 2;
     }
     return size;
 }
