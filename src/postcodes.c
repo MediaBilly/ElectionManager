@@ -169,10 +169,11 @@ int CountVotersWithPostCode(PostCodeChainNode pcNode,int percent,int printThem,F
         }
         // Print amount of people with the current postcode who have voted
     }
+    double ps = total != 0 ? (((double)voters)/((double)total))*100 : 0;
     if (printThem) {
-        fprintf(output,"Total Voters:%d (%d%% of them voted)\n",total,(int)(((double)voters)/((double)total))*100);
+        fprintf(output,"Total Voters:%d (%d%% of them voted)\n",total,(int)ps);
     }
-    return percent ? (((double)voters)/((double)total))*100 : voters;
+    return percent ? ps : voters;
 }
 
 void PostCodes_PrintPostCode(PostCodes pc,int postcode) {
