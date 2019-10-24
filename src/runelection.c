@@ -31,6 +31,10 @@ int main(int argc, char const *argv[])
             return 0;
         }
     }
+    if (inputfile == NULL) {
+        printf("Input file required.\n");
+        return 0;
+    }
     if(Curator_Initialize(&curator,inputfile,outputfile,numofupdates)) {
         Curator_Run(curator);
         Curator_Destroy(&curator);

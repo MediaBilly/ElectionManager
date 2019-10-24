@@ -124,7 +124,7 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
         return 0;
     }
     // Initialize the BF
-    if (!BF_Initialize(&((*cur)->BF),lines(inputfile))) {
+    if (!BF_Initialize(&((*cur)->BF),lines((*cur)->inputfile))) {
         return 0;
     }
     // Initialize the PostCodes Data Structure
@@ -135,17 +135,17 @@ int Curator_Initialize(Curator *cur,FILE *inputfile,FILE *outputfile,int numofup
     char gender;
     string idCode,firstname,lastname;
     int age,zip;
-    while ((idCode = readNextWord(inputfile)) != NULL)
+    while ((idCode = readNextWord((*cur)->inputfile)) != NULL)
     {
-        if ((lastname = readNextWord(inputfile)) == NULL) {
+        if ((lastname = readNextWord((*cur)->inputfile)) == NULL) {
             return 0;
         }
-        if ((firstname = readNextWord(inputfile)) == NULL) {
+        if ((firstname = readNextWord((*cur)->inputfile)) == NULL) {
             return 0;
         }
-        fscanf(inputfile,"%d",&age);
-        gender = readGender(inputfile);
-        fscanf(inputfile,"%d",&zip);
+        fscanf((*cur)->inputfile,"%d",&age);
+        gender = readGender((*cur)->inputfile);
+        fscanf((*cur)->inputfile,"%d",&zip);
         // Check if a voter with the same id already exists.If not, insert him to the data structures
         if (RBT_Search((*cur)->RBT,idCode) == NULL) {
             // Allocate memory for the new voter
